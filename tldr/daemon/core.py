@@ -4,10 +4,12 @@ TLDR Daemon core - the main TLDRDaemon server class.
 Holds indexes in memory and handles commands via Unix/TCP socket.
 """
 
+import atexit
 import hashlib
 import json
 import logging
 import os
+import signal
 import socket
 import sys
 import time
@@ -93,6 +95,11 @@ class TLDRDaemon:
         self._hook_stats_baseline: dict[str, HookStats] = self._snapshot_hook_stats()
         self._hook_invocation_count: int = 0
         self._hook_flush_threshold: int = 5  # Flush every N invocations
+
+        # Cross-platform graceful shutdown: register atexit handler
+        # This ensures stats persist even if daemon is killed (works on all platforms)
+        self._stats_persisted = False  # Guard against double-persist
+        atexit.register(self._persist_all_stats)
 
     def _compute_socket_path(self) -> Path:
         """Compute deterministic socket path from project path."""
@@ -331,7 +338,16 @@ class TLDRDaemon:
         return {"status": "shutting_down"}
 
     def _persist_all_stats(self) -> None:
-        """Persist all session and hook stats to JSONL stores."""
+        """Persist all session and hook stats to JSONL stores.
+
+        Thread-safe: uses a flag to prevent double-persist when both
+        atexit and finally block trigger this method.
+        """
+        # Guard against double-persist (atexit + finally can both trigger)
+        if self._stats_persisted:
+            return
+        self._stats_persisted = True
+
         # Persist session stats
         for session_id, stats in self._session_stats.items():
             if stats.requests > 0:  # Only persist if there were actual requests
@@ -1224,6 +1240,20 @@ class TLDRDaemon:
         self.write_pid_file()
         self.write_status("indexing")
 
+        # Cross-platform signal handling for graceful shutdown
+        # Signal handlers just set the flag - actual cleanup happens in finally block
+        def _signal_handler(signum: int, frame: Any) -> None:
+            signame = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
+            logger.info(f"Received {signame}, initiating graceful shutdown")
+            self._shutdown_requested = True
+
+        # SIGINT works on all platforms (Ctrl+C)
+        signal.signal(signal.SIGINT, _signal_handler)
+
+        # SIGTERM only on Unix/Mac (Windows ignores it but doesn't raise)
+        if sys.platform != "win32":
+            signal.signal(signal.SIGTERM, _signal_handler)
+
         try:
             self._create_socket()
             self.write_status("ready")
@@ -1243,6 +1273,13 @@ class TLDRDaemon:
         except Exception:
             logger.exception("Daemon error")
         finally:
+            # Persist stats before cleanup (graceful shutdown)
+            try:
+                self._persist_all_stats()
+                logger.info("Stats persisted successfully")
+            except Exception as e:
+                logger.error(f"Failed to persist stats on shutdown: {e}")
+
             self._cleanup_socket()
             self.remove_pid_file()
             self.write_status("stopped")
