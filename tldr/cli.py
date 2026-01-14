@@ -223,6 +223,7 @@ Semantic Search:
     extract_p.add_argument("--class", dest="filter_class", help="Filter to specific class")
     extract_p.add_argument("--function", dest="filter_function", help="Filter to specific function")
     extract_p.add_argument("--method", dest="filter_method", help="Filter to specific method (Class.method)")
+    extract_p.add_argument("--lang", default=None, help="Language (auto-detected from extension if not specified)")
 
     # tldr context <entry>
     ctx_p = subparsers.add_parser("context", help="Get relevant context for LLM")
@@ -273,7 +274,8 @@ Semantic Search:
         "impact", help="Find all callers of a function (reverse call graph)"
     )
     impact_p.add_argument("func", help="Function name to find callers of")
-    impact_p.add_argument("path", nargs="?", default=".", help="Project root")
+    impact_p.add_argument("path", nargs="?", default=None, help="Project root")
+    impact_p.add_argument("--project", dest="project_path", default=".", help="Project root (alternative to positional path)")
     impact_p.add_argument("--depth", type=int, default=3, help="Max depth (default: 3)")
     impact_p.add_argument("--file", help="Filter by file containing this string")
     impact_p.add_argument("--lang", default="python", help="Language")
@@ -690,8 +692,10 @@ Semantic Search:
             print(json.dumps(result, indent=2))
 
         elif args.command == "impact":
+            # Support both positional path and --project flag
+            project_root = args.path if args.path else args.project_path
             result = analyze_impact(
-                args.path,
+                project_root,
                 args.func,
                 max_depth=args.depth,
                 target_file=args.file,

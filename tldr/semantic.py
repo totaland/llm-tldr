@@ -495,15 +495,33 @@ def _get_cfg_summary(file_path: Path, func_name: str, lang: str) -> str:
     try:
         content = file_path.read_text()
 
-        if lang == "python":
-            from tldr.cfg_extractor import extract_python_cfg
-            cfg = extract_python_cfg(content, func_name)
+        # Import the appropriate CFG extractor based on language
+        from tldr import cfg_extractor
+
+        extractor_map = {
+            "python": cfg_extractor.extract_python_cfg,
+            "typescript": cfg_extractor.extract_typescript_cfg,
+            "javascript": cfg_extractor.extract_typescript_cfg,  # JS uses TS extractor
+            "go": cfg_extractor.extract_go_cfg,
+            "rust": cfg_extractor.extract_rust_cfg,
+            "java": cfg_extractor.extract_java_cfg,
+            "c": cfg_extractor.extract_c_cfg,
+            "cpp": cfg_extractor.extract_cpp_cfg,
+            "php": cfg_extractor.extract_php_cfg,
+            "ruby": cfg_extractor.extract_ruby_cfg,
+            "swift": cfg_extractor.extract_swift_cfg,
+            "csharp": cfg_extractor.extract_csharp_cfg,
+            "kotlin": cfg_extractor.extract_kotlin_cfg,
+            "scala": cfg_extractor.extract_scala_cfg,
+            "lua": cfg_extractor.extract_lua_cfg,
+            "luau": cfg_extractor.extract_luau_cfg,
+            "elixir": cfg_extractor.extract_elixir_cfg,
+        }
+
+        extractor = extractor_map.get(lang)
+        if extractor:
+            cfg = extractor(content, func_name)
             return f"complexity:{cfg.cyclomatic_complexity}, blocks:{len(cfg.blocks)}"
-        elif lang in ("typescript", "javascript"):
-            from tldr.cfg_extractor import extract_typescript_cfg
-            cfg = extract_typescript_cfg(content, func_name)
-            return f"complexity:{cfg.cyclomatic_complexity}, blocks:{len(cfg.blocks)}"
-        # Add other languages as needed
     except Exception:
         pass
 
@@ -518,9 +536,32 @@ def _get_dfg_summary(file_path: Path, func_name: str, lang: str) -> str:
     try:
         content = file_path.read_text()
 
-        if lang == "python":
-            from tldr.dfg_extractor import extract_python_dfg
-            dfg = extract_python_dfg(content, func_name)
+        # Import the appropriate DFG extractor based on language
+        from tldr import dfg_extractor
+
+        extractor_map = {
+            "python": dfg_extractor.extract_python_dfg,
+            "typescript": dfg_extractor.extract_typescript_dfg,
+            "javascript": dfg_extractor.extract_typescript_dfg,  # JS uses TS extractor
+            "go": dfg_extractor.extract_go_dfg,
+            "rust": dfg_extractor.extract_rust_dfg,
+            "java": dfg_extractor.extract_java_dfg,
+            "c": dfg_extractor.extract_c_dfg,
+            "cpp": dfg_extractor.extract_cpp_dfg,
+            "php": dfg_extractor.extract_php_dfg,
+            "ruby": dfg_extractor.extract_ruby_dfg,
+            "swift": dfg_extractor.extract_swift_dfg,
+            "csharp": dfg_extractor.extract_csharp_dfg,
+            "kotlin": dfg_extractor.extract_kotlin_dfg,
+            "scala": dfg_extractor.extract_scala_dfg,
+            "lua": dfg_extractor.extract_lua_dfg,
+            "luau": dfg_extractor.extract_luau_dfg,
+            "elixir": dfg_extractor.extract_elixir_dfg,
+        }
+
+        extractor = extractor_map.get(lang)
+        if extractor:
+            dfg = extractor(content, func_name)
 
             # Count unique variables and def-use chains
             var_names = set()
@@ -528,17 +569,6 @@ def _get_dfg_summary(file_path: Path, func_name: str, lang: str) -> str:
                 var_names.add(ref.name)
 
             return f"vars:{len(var_names)}, def-use chains:{len(dfg.dataflow_edges)}"
-        elif lang in ("typescript", "javascript"):
-            from tldr.dfg_extractor import extract_typescript_dfg
-            dfg = extract_typescript_dfg(content, func_name)
-
-            # Count unique variables and def-use chains
-            var_names = set()
-            for ref in dfg.var_refs:
-                var_names.add(ref.name)
-
-            return f"vars:{len(var_names)}, def-use chains:{len(dfg.dataflow_edges)}"
-        # Add other languages as needed
     except Exception:
         pass
 

@@ -661,7 +661,7 @@ def get_diagnostics(
                     text=True,
                     timeout=30,
                 )
-                all_diagnostics.extend(_parse_tsc_output(result.stderr))
+                all_diagnostics.extend(_parse_tsc_output(result.stdout))
                 tools_used.append("tsc")
             except subprocess.TimeoutExpired:
                 pass
@@ -1008,7 +1008,7 @@ def get_project_diagnostics(
                     timeout=120,
                     cwd=str(path),
                 )
-                all_diagnostics.extend(_parse_tsc_output(result.stderr))
+                all_diagnostics.extend(_parse_tsc_output(result.stdout))
                 tools_used.append("tsc")
             except subprocess.TimeoutExpired:
                 pass

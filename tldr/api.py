@@ -557,24 +557,10 @@ def get_relevant_context(
         "rust": ".rs"
     }.get(language, ".py")
 
-    # Search for module file matching entry_point
-    if "." not in entry_point and "/" not in entry_point:
-        module_file = None
-        for f in project.rglob(f"{entry_point}{ext_for_lang}"):
-            # Skip hidden dirs
-            try:
-                rel = f.relative_to(project)
-                if not any(p.startswith('.') for p in rel.parts):
-                    module_file = f
-                    break
-            except ValueError:
-                pass
-
-        if module_file:
-            # Found a module file - return its exports as module query
-            rel_path = module_file.relative_to(project)
-            module_path = str(rel_path.with_suffix(''))  # Remove extension
-            return _get_module_exports(project, module_path, language, include_docstrings)
+    # NOTE: Removed module-file shortcut that conflicted with function lookup.
+    # If entry_point="main" matched "main.ts", it would return module exports
+    # instead of doing BFS call graph traversal. Use explicit path syntax
+    # (e.g., "main/" or with extension) for module exports.
 
     # Build cross-file call graph
     call_graph = build_project_call_graph(str(project), language=language)
@@ -1608,10 +1594,24 @@ def get_code_structure(
             info = _extract_file_impl(str(file_path))
             info_dict = info.to_dict()
 
+            # Collect top-level functions
+            functions = [f["name"] for f in info_dict.get("functions", [])]
+
+            # Collect class methods
+            methods = []
+            for cls in info_dict.get("classes", []):
+                cls_name = cls.get("name", "")
+                for method in cls.get("methods", []):
+                    method_name = method.get("name", "")
+                    if method_name:
+                        methods.append(method_name)  # Plain method name
+                        functions.append(method_name)  # Also in functions for discoverability
+
             file_entry = {
                 "path": str(file_path.relative_to(root)),
-                "functions": [f["name"] for f in info_dict.get("functions", [])],
+                "functions": functions,  # Includes both functions and methods
                 "classes": [c["name"] for c in info_dict.get("classes", [])],
+                "methods": methods,  # Methods only (for filtering)
                 "imports": info_dict.get("imports", []),
             }
 
