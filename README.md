@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/llm-tldr)](https://pypi.org/project/llm-tldr/)
 [![Python](https://img.shields.io/pypi/pyversions/llm-tldr)](https://pypi.org/project/llm-tldr/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 **Give LLMs exactly the code they need. Nothing more.**
 
@@ -397,4 +397,4 @@ For the full architecture explanation, benchmarks, and advanced workflows:
 
 ## License
 
-Apache 2.0 - See LICENSE file.
+AGPL-3.0 - See LICENSE file.
